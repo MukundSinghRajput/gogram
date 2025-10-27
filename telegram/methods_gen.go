@@ -3,9 +3,10 @@
 package telegram
 
 import (
+	"reflect"
+
 	tl "github.com/amarnathcjd/gogram/internal/encoding/tl"
 	errors "github.com/pkg/errors"
-	"reflect"
 )
 
 type AccountAcceptAuthorizationParams struct {
@@ -18908,24 +18909,23 @@ func (c *Client) UsersGetUsers(id []InputUser) ([]User, error) {
 		return nil, errors.Wrap(err, "sending UsersGetUsers")
 	}
 
-	resp, ok := responseData.([]User)
-	if !ok {
-		if responseData == nil {
-			return nil, errors.New("[USER_ID_INVALID] The user ID is invalid")
+	switch v := responseData.(type) {
+	case []User:
+		return v, nil
+
+	case []*UserObj:
+		users := make([]User, len(v))
+		for i, u := range v {
+			users[i] = u
 		}
+		return users, nil
 
-		if _, ok := responseData.([]*UserObj); ok { // Temp Fix till Problem is Identified
-			var users []User = make([]User, len(responseData.([]*UserObj)))
-			for i, user := range responseData.([]*UserObj) {
-				users[i] = user
-			}
+	case nil:
+		return nil, errors.New("[USER_ID_INVALID] The user ID is invalid")
 
-			return users, nil
-		}
-
-		panic("got invalid response type: " + reflect.TypeOf(responseData).String())
+	default:
+		return nil, errors.Errorf("got invalid response type: %T", v)
 	}
-	return resp, nil
 }
 
 type UsersSetSecureValueErrorsParams struct {
